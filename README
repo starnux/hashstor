@@ -1,0 +1,60 @@
+hashstor concept :
+==================
+
+The project concept is to store files as shared chunks by their hash.
+
+The flow is :
+You take a list of files
+-> Each file has it's proper hash
+--> Each file hash is divided in N block
+---> Each block has it's proper hash
+
+So, the file hashs can be shared, and so the block hashs.
+This system can be useful for backup :
+ - Unchanged files are not stored another time
+ - Only changed blocks of changed files are stored
+ - Exact same block between differents files are shared
+ - The blocks can be compressed
+
+The file structure should be :
+/path/to/storage/
+|--- config
+|--- blocks/
+|     |---- dd5225c85b50b1105c05ffe9c216cb0b17a18285.xz
+|     |---- 24908d6593ab6fad9c4ea851f2f7958a07c17638.xz
+|     |---- 77feb757012c3c0243769fc4164303ce4e5d36c4.xz
+|--- files/
+|     |---- 64d16cfbb9f89dbe40cfb3dfeb16c9715092608f
+|     |---- 21c63c61509bbb4e64d8cef34a9a63c761cbcce5
+|--- storages/
+|     |---- f670fc6f-e976-435f-ad5d-e4576cf448af
+|     |---- first-storage -> f670fc6f-e976-435f-ad5d-e4576cf448af
+
+The blocks files are XZ compressed chunks. The chunks size is 4KiB, but the end of file != 4KiB is also stored in a chunk file.
+
+Files hashs describes the file options (size, permission, uid:gid, xattr, ...) and the list of associated hashs in text file format :
+
+Sample of files/64d16cfbb9f89dbe40cfb3dfeb16c9715092608f
+=========================================
+dd5225c85b50b1105c05ffe9c216cb0b17a18285
+24908d6593ab6fad9c4ea851f2f7958a07c17638
+=========================================
+
+Storages UUID file describes the files contained in the storage.
+
+Sample of storages/f670fc6f-e976-435f-ad5d-e4576cf448af :
+=========================================
+-rw-r--r-- superna superna 5307 2011-05-02 17:10 README.txt 64d16cfbb9f89dbe40cfb3dfeb16c9715092608f
+-rw-r--r-- superna superna 742 2011-05-10 11:23  LICENCE.txt 21c63c61509bbb4e64d8cef34a9a63c761cbcce5
+=========================================
+
+The utilities should permit to :
+ - Initialize a storage point
+ - Setup a new storage container name with an associated UUID
+ - Add files to a storage container
+ - Extract a single storage container from the storage point to a new or existing storage point
+ - Delete a storage container and cleanup unused blocks
+ - List & Extract files from a container
+ - Check storage point consistency, or cleanup if a storage failed previously
+ - Add files to the storage point via SSH, permit the sender to get all block hashs and files hashs in order to send only unknown blocks
+
