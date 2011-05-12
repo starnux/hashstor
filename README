@@ -18,7 +18,7 @@ This system can be useful for backup :
 
 The file structure should be :
 /path/to/storage/
-|--- config
+|--- .hashstor
 |--- blocks/
 |     |---- dd5225c85b50b1105c05ffe9c216cb0b17a18285.xz
 |     |---- 24908d6593ab6fad9c4ea851f2f7958a07c17638.xz
@@ -27,8 +27,10 @@ The file structure should be :
 |     |---- 64d16cfbb9f89dbe40cfb3dfeb16c9715092608f
 |     |---- 21c63c61509bbb4e64d8cef34a9a63c761cbcce5
 |--- storages/
-|     |---- f670fc6f-e976-435f-ad5d-e4576cf448af
-|     |---- first-storage -> f670fc6f-e976-435f-ad5d-e4576cf448af
+      |---- f670fc6f-e976-435f-ad5d-e4576cf448af
+      |---- first-storage -> f670fc6f-e976-435f-ad5d-e4576cf448af
+
+The .hashstor indicates this directory is a hashstor storage point, it contains the storage point configuration like chunk size.
 
 The blocks files are XZ compressed chunks. The chunks size is 4KiB, but the end of file != 4KiB is also stored in a chunk file.
 

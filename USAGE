@@ -1,0 +1,49 @@
+hashstor <command> [options]
+
+Commands :
+ - init [blocksize]
+    Initialize an hashstor storage point in the current directory, with a 
+    specific blocksize if specified
+ - new [name]
+    Create a new storage container, with an associated name if specified.
+    In either cases, an UUID will be created and associated to the 
+    specified name.
+ - add <name or uuid> <file pathname> [container file path]
+    Add a file to the specified storage container.
+    The container path if not specified will be the filename, 
+        e.g /path/to/my/file.txt -> "/file.txt"
+    The specified container path must be a virtual UNIX path like "/directory/file.txt".
+    If the file path is a directory, the directory files will be added recursivelly.
+    The specified container path for the directory will replace the directory name.
+    Examples :
+     # hashstor add <uuid> /path/to/my/file.txt
+        -> Stores "/file.txt"
+     # hashstor add <uuid> /path/to/my/file.txt /public/file.txt
+        -> Stores "/public/file.txt"
+     # hashstor add <uuid> /path/to/my/directory
+        -> Stores "/directory/file1.txt"
+        -> Stores "/directory/subdir/file2.txt"
+        -> Stores "/directory/subdir/subsubdir/file3.txt"
+     # hashstor add <uuid> /path/to/my/directory /public
+        -> Stores "/public/file1.txt"
+        -> Stores "/public/subdir/file2.txt"
+        -> Stores "/public/subdir/subsubdir/file3.txt"
+ - rm <name or uuid>
+    Delete the storage container, and its associated files and unused blocks.
+ - ls <name or uuid>
+    List the files into the specified storage container
+ - cp <name or uuid> <virtual file path> <destination directory>
+    Extracts the specified file into the destination directory from the specified
+    storage container
+ - check [name or uuid]
+    Check storage point consistency.
+    You can specify a storage container to check.
+ - cleanup [name or uuid]
+    Cleanup storage point if a previous action failed by removing unused blocks
+    or files, a storage container can be specified.
+
+TODO:
+ - Extract a single storage container from the storage point to a new or 
+    existing storage point
+ - Add files to the storage point via SSH, permit the sender to get all 
+    block hashs and files hashs in order to send only unknown blocks
