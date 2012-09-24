@@ -27,14 +27,14 @@ The file structure should be :
 |     |---- 64d16cfbb9f89dbe40cfb3dfeb16c9715092608f
 |     |---- 21c63c61509bbb4e64d8cef34a9a63c761cbcce5
 |--- storages/
-      |---- f670fc6f-e976-435f-ad5d-e4576cf448af
-      |---- first-storage -> f670fc6f-e976-435f-ad5d-e4576cf448af
+      |---- default
+      |---- first-storage
 
 The .hashstor indicates this directory is a hashstor storage point, it contains the storage point configuration like chunk size.
 
-The blocks files are XZ compressed chunks. The chunks size is 4KiB, but the end of file != 4KiB is also stored in a chunk file.
+The blocks files are zlib compressed chunks. The chunks size is 16KiB, but the end of file != 16KiB is also stored in a chunk file.
 
-Files hashs describes the file options (size, permission, uid:gid, xattr, ...) and the list of associated hashs in text file format :
+Files hashs describes the file options (size, name) and the list of associated hashs in text file format :
 
 Sample of files/64d16cfbb9f89dbe40cfb3dfeb16c9715092608f
 =========================================
@@ -42,12 +42,12 @@ dd5225c85b50b1105c05ffe9c216cb0b17a18285
 24908d6593ab6fad9c4ea851f2f7958a07c17638
 =========================================
 
-Storages UUID file describes the files contained in the storage.
+Storages file describes the files contained in the storage.
 
-Sample of storages/f670fc6f-e976-435f-ad5d-e4576cf448af :
+Sample of storages/default :
 =========================================
--rw-r--r-- superna superna 5307 2011-05-02 17:10 README.txt 64d16cfbb9f89dbe40cfb3dfeb16c9715092608f
--rw-r--r-- superna superna 742 2011-05-10 11:23  LICENCE.txt 21c63c61509bbb4e64d8cef34a9a63c761cbcce5
+5307 64d16cfbb9f89dbe40cfb3dfeb16c9715092608f README.txt 64d16cfbb9f89dbe40cfb3dfeb16c9715092608f
+742 21c63c61509bbb4e64d8cef34a9a63c761cbcce5 LICENCE.txt 21c63c61509bbb4e64d8cef34a9a63c761cbcce5
 =========================================
 
 The utilities should permit to :
