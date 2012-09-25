@@ -8,9 +8,10 @@ import os
 import sys
 import hashlib
 import binascii
-from optparse import OptionParser
-import lzma
+import datetime
 import zlib
+import operator
+from optparse import OptionParser
 
 BLOCKDIR="%s/blocks"
 BLOCKPATH="%s/blocks/%s"
@@ -162,6 +163,8 @@ def hashstor_load_storage(hashstor, storage):
     for line in storage_fd:
         file_data = dict()
         d = line.rstrip().split(" ")
+        if len(d) < 3:
+            continue
         file_data["size"] = int(d[0])
         file_data["name"] = d[2]
         if d[1] in storage_data.keys():
@@ -294,16 +297,21 @@ if __name__ == '__main__':
     try:
         usage = 'Usage: %prog [options] <command> [command options]\n'\
                 '  Parse file and create a HashStor storage point, commands are :\n'\
-                '   - init [source directory] : Initialize storage point, with source directory if provided\n'\
-                '   - update <source directory> : Update files from source directory\n'\
-                '   - compare <source directory> : Compare files with source directory\n'\
+                '   - init [files or directories] : Initialize storage point, default with all at current directory\n'\
+                '   - storages <command> : Manipulate storage names\n'\
+                '       - storages list : List all storage names\n'\
+                '       - storages delete <storage name> : Delete storage names\n'\
+                '   - update [files or directories] : Update with files, default with all at current directory\n'\
+                '   - compare [files or directories] : Compare with files, default with all at current directory\n'\
                 '   - list [internal path] : List files in the storage point\n'\
-                '   - extract <destination directory> [internal file name] : Extract file\n'\
-                '   - delete [internal file name] : Delete file or entire storage name\n'\
+                '   - extract <destination directory> [internal file name] : Extract file, default all files\n'\
+                '   - delete [internal file name] : Delete file, default entire storage name\n'\
                 '   - check : Check integrity\n'
         optparser = OptionParser(usage=usage)
         optparser.add_option('-d', '--hashstor', dest='hashstor',
                              help='HashStor storage point, default .hashstor in current directory')
+        optparser.add_option('-c', '--directory', dest='directory',
+                             help='Use this directory for base path on file update')
         optparser.add_option('-s', '--storage', dest='storage',
                              help='HashStor storage name, default name is \'%s\'' % DEFAULT_STORAGE)
         optparser.add_option('-v', '--debug', dest='debug',
@@ -311,8 +319,13 @@ if __name__ == '__main__':
                              help='Show debug information')
         (options, args) = optparser.parse_args(sys.argv[1:])
 
+        if not options.directory:
+            directory = os.getcwd()
+        else:
+            directory = options.directory.rstrip("/")
+
         if not options.hashstor:
-            hashstor = DEFAULT_PATH
+            hashstor = "%s/%s" % (directory, DEFAULT_PATH)
         else:
             hashstor = options.hashstor.rstrip("/")
 
@@ -320,6 +333,9 @@ if __name__ == '__main__':
             storage = DEFAULT_STORAGE
         else:
             storage = options.storage
+
+        if options.debug:
+            print >> sys.stderr, " - HashStor in '%s'\n - Storage name '%s'\n - Directory '%s'" % (hashstor, storage, directory)
         
         if len(args) < 1:
             raise AssertionError, "Please specify command"
@@ -332,7 +348,7 @@ if __name__ == '__main__':
             if len(args) >= 2:
                 sourcedir = args[1].rstrip("/")
             else:
-                sourcedir = "./"
+                sourcedir = directory
 
             # Parse source directory
             files = walk_over_dir(sourcedir)
@@ -349,17 +365,17 @@ if __name__ == '__main__':
             check_hashstor(hashstor)
 
             if len(args) < 2:
-                paths = ["./"]
+                paths = ["/"]
             else:
                 paths = args[1:]
 
             for path in paths:
                 if not os.path.isdir(path):
                     files = [path]
-                    sourcedir = ""
+                    sourcedir = directory
                     hashstor_store_files(hashstor, storage, sourcedir, files)
                 else:
-                    sourcedir = path
+                    sourcedir = "%s/%s" % (directory, path.rstrip("/"))
 
                     # Parse source directory
                     files = walk_over_dir(sourcedir)
@@ -376,18 +392,18 @@ if __name__ == '__main__':
             check_hashstor(hashstor)
 
             if len(args) < 2:
-                paths = ["./"]
+                paths = ["/"]
             else:
                 paths = args[1:]
 
             for path in paths:
                 if not os.path.isdir(path):
                     files = [path]
-                    sourcedir = ""
+                    sourcedir = directory
                     if hashstor_compare_files(hashstor, storage, sourcedir, files):
                         sys.exit(1)
                 else:
-                    sourcedir = path
+                    sourcedir = "%s/%s" % (directory, path.rstrip("/"))
 
                     # Parse source directory
                     files = walk_over_dir(sourcedir)
@@ -398,6 +414,11 @@ if __name__ == '__main__':
             sys.exit(0)
 
         elif args[0] == "list":
+
+            if not os.path.exists(hashstor) or not os.path.isdir(hashstor):
+                raise AssertionError, "Invalid HashStor storage point"
+
+            check_hashstor(hashstor)
 
             storage_data = hashstor_load_storage(hashstor, storage)
 
@@ -413,7 +434,53 @@ if __name__ == '__main__':
 
             sys.exit(0)
 
+        elif args[0] == "storages":
+
+            if not os.path.exists(hashstor) or not os.path.isdir(hashstor):
+                raise AssertionError, "Invalid HashStor storage point"
+
+            check_hashstor(hashstor)
+
+            if len(args) < 2:
+                raise AssertionError, "Please specify storages command"
+
+            if args[1] == "list":
+                storages = dict()
+                storage_list = os.listdir(STORAGEDIR % hashstor)
+                for s in storage_list:
+                    stat = os.stat(STORAGEPATH % (hashstor, s))
+                    mtime = datetime.datetime.fromtimestamp(stat.st_mtime)
+                    storages[s] = { "mtime" : mtime}
+                
+                storage_list = sorted(storages.iteritems(), key=operator.itemgetter(1))
+                for s in storage_list:
+                    print " - '%s' (Last Modified on %s)" % (s[0], s[1]["mtime"])
+
+            elif args[1] == "delete":
+                
+                if len(args) < 3:
+                    raise AssertionError, "Please specify storage name to delete"
+                
+                storage = args[2]
+
+                storage_data = hashstor_load_storage(hashstor, storage)
+
+                for h in storage_data.keys():
+                    hashstor_delete(hashstor, storage, h)
+
+                os.unlink(STORAGEPATH % (hashstor, storage))
+
+            else:
+                raise AssertionError, "Unknown storages command"
+
+            sys.exit(0)
+
         elif args[0] == "extract":
+
+            if not os.path.exists(hashstor) or not os.path.isdir(hashstor):
+                raise AssertionError, "Invalid HashStor storage point"
+
+            check_hashstor(hashstor)
 
             if len(args) < 1:
                 raise AssertionError, "Please specify destination directory"
@@ -435,6 +502,11 @@ if __name__ == '__main__':
             sys.exit(0)
 
         elif args[0] == "delete":
+
+            if not os.path.exists(hashstor) or not os.path.isdir(hashstor):
+                raise AssertionError, "Invalid HashStor storage point"
+
+            check_hashstor(hashstor)
 
             if len(args) >= 2:
                 filename = args[1]
@@ -461,6 +533,11 @@ if __name__ == '__main__':
                 hashstor_write_storage(hashstor, storage, storage_data)
             
         elif args[0] == "check":
+
+            if not os.path.exists(hashstor) or not os.path.isdir(hashstor):
+                raise AssertionError, "Invalid HashStor storage point"
+
+            check_hashstor(hashstor)
 
             errors = 0
 
