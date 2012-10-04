@@ -3,12 +3,13 @@ hashstor <command> [options]
 Commands :
 Usage: hashstor.py [options] <command> [command options]
  Parse file and create a HashStor storage point, commands are :
-  - init [files or directories] : Initialize storage point, default with all at current directory
+  - init : Initialize storage point
   - storages <command> : Manipulate storage names
     - storages list : List all storage names
     - storages delete <storage name> : Delete storage names
   - update [files or directories] : Update with files, default with all at current directory
   - compare [files or directories] : Compare with files, default with all at current directory
+  - diff <storage name> : Compare selected storage name with current storage name
   - list [internal path] : List files in the storage point
   - extract <destination directory> [internal file name] : Extract file, default all files
   - delete [internal file name] : Delete file, default entire storage name
