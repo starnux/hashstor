@@ -162,11 +162,22 @@ def hashstor_load_storage(hashstor, storage):
     
     for line in storage_fd:
         file_data = dict()
-        d = line.rstrip().split(" ")
+        line = line.rstrip('\n').rstrip('\r')
+        d = []
+        start = 0
+        count = 0
+        while count < 2:
+            pos = line.find(' ', start)
+            if pos < 0:
+                continue
+            d.append(line[start:pos])
+            start = pos+1
+            count += 1
+        d.append(line[start:])
         if len(d) < 3:
             continue
         file_data["size"] = int(d[0])
-        file_data["name"] = d[2]
+        file_data["name"] = ' '.join(d[2:])
         if d[1] in storage_data.keys():
             storage_data[d[1]].append(file_data)
         else:
@@ -297,12 +308,13 @@ if __name__ == '__main__':
     try:
         usage = 'Usage: %prog [options] <command> [command options]\n'\
                 '  Parse file and create a HashStor storage point, commands are :\n'\
-                '   - init [files or directories] : Initialize storage point, default with all at current directory\n'\
+                '   - init : Initialize storage point\n'\
                 '   - storages <command> : Manipulate storage names\n'\
                 '       - storages list : List all storage names\n'\
                 '       - storages delete <storage name> : Delete storage names\n'\
                 '   - update [files or directories] : Update with files, default with all at current directory\n'\
                 '   - compare [files or directories] : Compare with files, default with all at current directory\n'\
+                '   - diff <storage name> : Compare selected storage name with current storage name\n'\
                 '   - list [internal path] : List files in the storage point\n'\
                 '   - extract <destination directory> [internal file name] : Extract file, default all files\n'\
                 '   - delete [internal file name] : Delete file, default entire storage name\n'\
@@ -343,17 +355,8 @@ if __name__ == '__main__':
         if args[0] == "init":
             if os.path.exists(hashstor):
                 raise AssertionError, "Storage already exists"
+
             mk_hashstor(hashstor)
-
-            if len(args) >= 2:
-                sourcedir = args[1].rstrip("/")
-            else:
-                sourcedir = directory
-
-            # Parse source directory
-            files = walk_over_dir(sourcedir)
-
-            hashstor_store_files(hashstor, storage, sourcedir, files)
 
             sys.exit(0)
 
@@ -410,6 +413,43 @@ if __name__ == '__main__':
 
                     if hashstor_compare_files(hashstor, storage, sourcedir, files):
                         sys.exit(1)
+
+            sys.exit(0)
+
+        elif args[0] == "diff":
+
+            if not os.path.exists(hashstor) or not os.path.isdir(hashstor):
+                raise AssertionError, "Invalid HashStor storage point"
+
+            check_hashstor(hashstor)
+
+            if len(args) < 2:
+                raise AssertionError, "Please specify storages name"
+
+            cur_storage_data = hashstor_load_storage(hashstor, storage)
+            other_storage_data = hashstor_load_storage(hashstor, args[1])
+
+            cur_files = dict()
+            other_files = dict()
+
+            for h in cur_storage_data.keys():
+                for f in cur_storage_data[h]:
+                    cur_files[f["name"]] = h
+            for h in other_storage_data.keys():
+                for f in other_storage_data[h]:
+                    other_files[f["name"]] = h
+
+            for f in cur_files.keys():
+                if f in other_files.keys():
+                    if cur_files[f] != other_files[f]:
+                        print "M %s" % f
+                else:
+                    print "+ %s" % f
+
+            for f in other_files.keys():
+                if f not in cur_files.keys():
+                    print "- %s" % f
+                        
 
             sys.exit(0)
 
